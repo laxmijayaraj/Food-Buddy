@@ -19,7 +19,23 @@ if not API_KEY:
     st.stop()
 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+
+# Auto-pick a model that supports generateContent (prevents NotFound errors)
+available = [
+    m.name for m in genai.list_models()
+    if "generateContent" in getattr(m, "supported_generation_methods", [])
+]
+
+if not available:
+    st.error("No Gemini text models available for this API key. Check Google AI Studio project/key.")
+    st.stop()
+
+# Prefer a Flash model if present
+chosen = next((n for n in available if "flash" in n.lower()), available[0])
+st.caption(f"✅ Using model: {chosen}")
+
+model = genai.GenerativeModel(chosen)
+
 
 # User input
 user_profile = st.text_area(
@@ -46,3 +62,4 @@ Student profile:
             response = model.generate_content(prompt)
             st.subheader("Your Personalized Plan")
             st.write(response.text)
+
